@@ -14,6 +14,7 @@ Este projeto atua como o Backend obrigatório para o funcionamento das funcional
     apps/worker: Orquestrador de tarefas que gerencia a persistência e atualização do banco de dados.
 
 ## 🛠️ Stack Tecnológica
+
     untime: Node.js (v20+) + TypeScript
     Framework Web: Fastify v4
     ORM: Prisma (v5+)
@@ -22,23 +23,23 @@ Este projeto atua como o Backend obrigatório para o funcionamento das funcional
     Agendamento: Node-cron
 
 ## Conteinerização & Deploy (Foco no Render)
+
 > Diferente de arquiteturas tradicionais que exigem múltiplos serviços pagos separadamente, esta aplicação foi desenhada para rodar em um único container no plano gratuito do Render:
 
 **⚙️ Estratégia de Container Único**
 Para contornar as limitações de memória (512MB RAM), o projeto utiliza um entrypoint.sh que gerencia:
-    Redis Interno: Instalado e executado dentro do próprio container para gerenciar as filas do BullMQ sem custos extras.
-    Execução Nativa: Todos os apps são compilados para JavaScript puro (dist/) antes do deploy, reduzindo drasticamente o uso de CPU e RAM em comparação ao ts-node.
-    Persistence (SQLite): O banco de dados reside no sistema de arquivos do container.
+Redis Interno: Instalado e executado dentro do próprio container para gerenciar as filas do BullMQ sem custos extras.
+Execução Nativa: Todos os apps são compilados para JavaScript puro (dist/) antes do deploy, reduzindo drasticamente o uso de CPU e RAM em comparação ao ts-node.
+Persistence (SQLite): O banco de dados reside no sistema de arquivos do container.
 
 **🚀 Configuração para Deploy no Render**
 Ao conectar este repositório ao Render, utilize:
-    Runtime: Docker
-    Plano: Free
-    Variáveis de Ambiente:
-    PORT: 3333
-    DATABASE_URL: file:/app/prisma/dev.db
-    REDIS_HOST: 127.0.0.1 (O Redis estará rodando localmente no container)
-
+Runtime: Docker
+Plano: Free
+Variáveis de Ambiente:
+PORT: 3333
+DATABASE_URL: file:/app/prisma/dev.db
+REDIS_HOST: 127.0.0.1 (O Redis estará rodando localmente no container)
 
 ## 🚀 Guia do Programador: Como Rodar Localmente
 
@@ -64,13 +65,12 @@ Ao conectar este repositório ao Render, utilize:
   npx prisma db push
 
 4.  **🔐 Variáveis de Ambiente (.env)**
-O projeto utiliza variáveis de ambiente para gerenciar conexões e portas. 
+    O projeto utiliza variáveis de ambiente para gerenciar conexões e portas.
     Crie um arquivo .env na raiz do projeto com:
-    
-    - PORT - Porta onde a API será exposta = 3333
-    - DATABASE_URL - Caminho do banco SQLite = file:./prisma/dev.db
-    - REDIS_HOST - Host do servidor Redis = 127.0.0.1
-    - REDIS_PORT - Porta do servidor Redis = 6379
+        - PORT - Porta onde a API será exposta = 3333
+        - DATABASE_URL - Caminho do banco SQLite = file:./prisma/dev.db
+        - REDIS_HOST - Host do servidor Redis = 127.0.0.1
+        - REDIS_PORT - Porta do servidor Redis = 6379
 
 No ambiente Render (Docker), o REDIS_HOST deve ser obrigatoriamente 127.0.0.1, pois o serviço Redis é inicializado internamente no mesmo container pelo entrypoint.sh.
 
@@ -80,10 +80,10 @@ No ambiente Render (Docker), o REDIS_HOST deve ser obrigatoriamente 127.0.0.1, p
   npm run dev
 
 - Como rodar localmente (Docker)
-Certifique-se de ter as variáveis de ambiente no .env.
-Execute o comando:
-    docker build -t bazaar-api-docker 
-    docker run -p 3333:3333 bazaar-api-docker
+  Certifique-se de ter as variáveis de ambiente no .env.
+  Execute o comando:
+  docker build -t bazaar-api-docker
+  docker run -p 3333:3333 bazaar-api-docker
 
 ## 📡 Endpoints Principais
 
