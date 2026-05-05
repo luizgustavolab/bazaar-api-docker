@@ -20,7 +20,7 @@ async function setupCleanupJob() {
     {},
     {
       repeat: {
-        pattern: "0 * * * *",
+        pattern: "0 0 * * *",
       },
     },
   );
@@ -92,7 +92,6 @@ new Worker(
       try {
         const nowInSeconds = Math.floor(Date.now() / 1000).toString();
 
-        
         const expiredAuctions = await prisma.auction.findMany({
           where: { endsAt: { lt: nowInSeconds } },
           select: { id: true, characterId: true },
@@ -102,12 +101,10 @@ new Worker(
           const auctionIds = expiredAuctions.map((a) => a.id);
           const characterIds = expiredAuctions.map((a) => a.characterId);
 
-         
           await prisma.auction.deleteMany({
             where: { id: { in: auctionIds } },
           });
 
-         
           await prisma.character.deleteMany({
             where: { id: { in: characterIds } },
           });

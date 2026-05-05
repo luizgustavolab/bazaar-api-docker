@@ -7,9 +7,12 @@
     "packages/*"
   ],
   "scripts": {
+    "start:api": "node apps/api/dist/server.js",
+    "start:worker": "node apps/worker/dist/index.js",
+    "start:crawler": "node apps/crawler/dist/index.js",
     "seed": "ts-node prisma/seed.ts",
     "generate": "npx prisma generate",
-    "db:push": "npx prisma db push",
+    "db:push": "npx prisma db push --schema=./prisma/schema.prisma",
     "dev": "npm run generate && concurrently -p \"name\" -n \"API,WORKER,CRAWLER\" -c \"cyan,green,magenta\" \"npm:dev:api\" \"npm:dev:worker\" \"npm:dev:crawler\"",
     "dev:api": "cd apps/api && ts-node-dev --respawn --transpile-only --clear src/server.ts",
     "dev:worker": "cd apps/worker && ts-node-dev --respawn --transpile-only --clear src/index.ts",
@@ -28,10 +31,12 @@
     "fastify": "^4.28.0",
     "ioredis": "^5.3.0",
     "prisma": "^5.6.0",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.1.7",
+    "node-cron": "^3.0.3"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "@types/node-cron": "^3.0.11",
     "@types/sqlite3": "^3.1.11",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
