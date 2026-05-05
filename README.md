@@ -82,7 +82,7 @@ No ambiente Render (Docker), o REDIS_HOST deve ser obrigatoriamente 127.0.0.1, p
 - Como rodar localmente (Docker)
 Certifique-se de ter as variáveis de ambiente no .env.
 Execute o comando:
-    docker build -t bazaar-api-docker .
+    docker build -t bazaar-api-docker 
     docker run -p 3333:3333 bazaar-api-docker
 
 ## 📡 Endpoints Principais
