@@ -4,30 +4,36 @@ services:
   api:
     build: .
     container_name: bazaar-api-container
+
     ports:
       - "3333:3333"
+
     env_file:
       - .env
+
     environment:
-      # Sobrescrevemos as variáveis para apontar para o container de cache local
-      - REDIS_HOST=cache
-      - REDIS_PORT=6379
-      # Deixamos a senha vazia para que o código desative o TLS localmente
-      - REDIS_PASSWORD=
-      # URL do Turso para desenvolvimento
-      - TURSO_DATABASE_URL=libsql://bazaar-api-db-luizgustavolab.aws-us-west-2.turso.io
+      # Redis local do compose
+      REDIS_HOST: cache
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+
+      # Turso
+      DATABASE_URL: libsql://bazaar-api-db-luizgustavolab.aws-us-west-2.turso.io
+
     volumes:
       - .:/app
       - /app/node_modules
+
     depends_on:
       - cache
 
   cache:
     image: redis:alpine
     container_name: bazaar-redis-cache
+
     ports:
       - "6379:6379"
-    # Adicionamos um limite de memória para o Redis local não consumir sua RAM
+
     deploy:
       resources:
         limits:
