@@ -1,4 +1,5 @@
 import { Worker, type Job, Queue, type ConnectionOptions } from "bullmq";
+// Ajuste de importação para garantir consistência no ambiente compilado
 import { prisma } from "../../api/dist/lib/prisma.js";
 import { redisConnection } from "../../api/dist/lib/redis.js";
 
@@ -15,46 +16,16 @@ interface CharacterJobData {
   endsAt: string | number;
 }
 
-// Interface para a limpeza
-interface ExpiredAuctionResult {
-  id: number;
-  characterId: number;
-}
-
 const bullmqConnection = redisConnection as unknown as ConnectionOptions;
 
-const cleanupQueue = new Queue("cleanup-queue", {
-  connection: bullmqConnection,
-});
-
-async function setupCleanupJob(): Promise<void> {
-  await cleanupQueue.add(
-    "clean-expired-auctions",
-    {},
-    {
-      jobId: "daily-cleanup",
-      repeat: { pattern: "0 0 * * *" },
-      removeOnComplete: true,
-    },
-  );
-}
-
-new Worker<CharacterJobData>(
+// Worker Principal: Processa os personagens do leilão
+const bazaarWorker = new Worker<CharacterJobData>(
   "bazaar-queue",
   async (job: Job<CharacterJobData>) => {
-    const {
-      name,
-      level,
-      vocation,
-      world,
-      outfitUrl,
-      skills,
-      items,
-      price,
-      endsAt,
-    } = job.data;
+    const { name, level, vocation, world, outfitUrl, skills, items, price, endsAt } = job.data;
 
     try {
+      // Usamos uma transação ou um upsert robusto
       await prisma.character.upsert({
         where: { name },
         update: {
@@ -62,14 +33,8 @@ new Worker<CharacterJobData>(
           vocation,
           world,
           outfitUrl,
-          skills:
-            typeof skills === "object"
-              ? JSON.stringify(skills)
-              : String(skills || "{}"),
-          items:
-            typeof items === "object"
-              ? JSON.stringify(items)
-              : String(items || "[]"),
+          skills: typeof skills === "object" ? JSON.stringify(skills) : String(skills || "{}"),
+          items: typeof items === "object" ? JSON.stringify(items) : String(items || "[]"),
           auction: {
             upsert: {
               create: { price, endsAt: String(endsAt) },
@@ -83,73 +48,30 @@ new Worker<CharacterJobData>(
           vocation,
           world,
           outfitUrl,
-          skills:
-            typeof skills === "object"
-              ? JSON.stringify(skills)
-              : String(skills || "{}"),
-          items:
-            typeof items === "object"
-              ? JSON.stringify(items)
-              : String(items || "[]"),
+          skills: typeof skills === "object" ? JSON.stringify(skills) : String(skills || "{}"),
+          items: typeof items === "object" ? JSON.stringify(items) : String(items || "[]"),
           auction: {
             create: { price, endsAt: String(endsAt) },
           },
         },
       });
 
-      console.log(`[WORKER] ${name} sincronizado com sucesso.`);
+      // Removido o console.log excessivo para não sujar o log do Render
     } catch (error: unknown) {
-      console.error(`[WORKER] Erro ao processar ${name}:`, error);
-      throw error;
+      console.error(`[WORKER] Falha ao processar ${name}. O job será re-tentado pelo BullMQ.`);
+      throw error; // Lançar o erro permite que o 'attempts' do Crawler funcione
     }
   },
   {
     connection: bullmqConnection,
-    removeOnComplete: { count: 20 },
-    removeOnFail: { count: 50 },
-    concurrency: 2,
-  },
+    concurrency: 5, // Aumentamos para 5 para processar a carga diária mais rápido
+    removeOnComplete: { count: 0 }, // O Crawler já gerencia isso
+  }
 );
 
-new Worker(
-  "cleanup-queue",
-  async (job: Job) => {
-    if (job.name === "clean-expired-auctions") {
-      try {
-        const nowInSeconds = Math.floor(Date.now() / 1000).toString();
+// Listener de erros para monitoramento
+bazaarWorker.on("failed", (job, err) => {
+  console.error(`[WORKER] Job ${job?.id} falhou: ${err.message}`);
+});
 
-        const expiredAuctions = await prisma.auction.findMany({
-          where: { endsAt: { lt: nowInSeconds } },
-          select: { id: true, characterId: true },
-        });
-
-        if (expiredAuctions.length > 0) {
-          // TIPAGEM EXPLÍCITA AQUI PARA TS7006
-          const auctionIds = expiredAuctions.map(
-            (a: ExpiredAuctionResult) => a.id,
-          );
-          const characterIds = expiredAuctions.map(
-            (a: ExpiredAuctionResult) => a.characterId,
-          );
-
-          await prisma.$transaction([
-            prisma.auction.deleteMany({ where: { id: { in: auctionIds } } }),
-            prisma.character.deleteMany({
-              where: { id: { in: characterIds } },
-            }),
-          ]);
-
-          console.log(
-            `[CLEANUP] ${auctionIds.length} leilões expirados removidos.`,
-          );
-        }
-      } catch (error: unknown) {
-        console.error("[CLEANUP] Erro na limpeza:", error);
-        throw error;
-      }
-    }
-  },
-  { connection: bullmqConnection },
-);
-
-void setupCleanupJob().catch(console.error);
+console.log("[WORKER] Pronto para processar a fila diária.");

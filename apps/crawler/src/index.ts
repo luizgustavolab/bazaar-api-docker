@@ -18,8 +18,9 @@ async function runCrawlerCycle(): Promise<void> {
     const now = new Date().toLocaleString("pt-BR", {
       timeZone: "America/Sao_Paulo",
     });
-    console.log(`[CRAWLER] [${now}] Iniciando sincronização...`);
+    console.log(`[CRAWLER] [${now}] Iniciando sincronização diária...`);
 
+    // Valida conexão com o Turso antes de começar o scraping pesado
     await prisma.$queryRaw`SELECT 1`;
 
     await fetchAllActiveAuctions(async (items: AuctionData[]) => {
@@ -39,20 +40,23 @@ async function runCrawlerCycle(): Promise<void> {
             endsAt: item.endDate,
           },
           {
-            removeOnComplete: { count: 20 },
+            // removeOnComplete: true economiza muitos comandos no Upstash
+            removeOnComplete: true, 
+            removeOnFail: { count: 10 }, 
             attempts: 3,
-            backoff: { type: "exponential", delay: 2000 },
+            backoff: { type: "exponential", delay: 5000 }, // Delay maior para resiliência
           },
         );
       }
     });
-    console.log(`[CRAWLER] Ciclo finalizado.`);
+    console.log(`[CRAWLER] Ciclo finalizado com sucesso.`);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Unknown Error";
-    console.error("[CRAWLER] Erro:", msg);
+    console.error("[CRAWLER] Erro crítico no ciclo:", msg);
   }
 }
 
+// Agendamento: 00:00 (Meia-noite) todos os dias
 cron.schedule("0 0 * * *", () => {
   void runCrawlerCycle();
 });
@@ -61,10 +65,17 @@ const start = async (): Promise<void> => {
   try {
     const port = Number(process.env.PORT) || 3333;
     const fastifyApp = appInstance as unknown as FastifyInstance;
+    
+    // Escuta na porta para o Render não dar 'Health Check Failed'
     await fastifyApp.listen({ port, host: "0.0.0.0" });
-    console.log(`[CRAWLER-SERVICE] Online na porta ${port}`);
-    await runCrawlerCycle();
+    console.log(`[CRAWLER-SERVICE] Monitor de Health Check online.`);
+    
+    // IMPORTANTE: Removido o runCrawlerCycle() automático do boot 
+    // para evitar que cada deploy ou restart do Render gaste créditos 
+    // fora do horário programado.
+    console.log("[CRAWLER] Aguardando próximo ciclo agendado (00:00).");
   } catch (err: unknown) {
+    console.error("[CRAWLER-SERVICE] Falha ao iniciar:", err);
     process.exit(1);
   }
 };

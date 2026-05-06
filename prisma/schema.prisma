@@ -1,6 +1,7 @@
 // Configuração do gerador para aceitar o Driver Adapter (Turso/LibSQL)
 generator client {
   provider        = "prisma-client-js"
+  url      = env("TURSO_DATABASE_URL")
   previewFeatures = ["driverAdapters"]
 }
 

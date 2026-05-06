@@ -1,5 +1,6 @@
 FROM node:20-slim
 
+# Instalamos apenas o necessário para o Prisma e Turso funcionarem
 RUN apt-get update && apt-get install -y \
     openssl \
     ca-certificates \
@@ -7,27 +8,27 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# 1. Copiar definições
+# Copiamos as definições de pacotes primeiro para aproveitar o cache
 COPY package*.json ./
 COPY apps/api/package*.json ./apps/api/
 COPY apps/crawler/package*.json ./apps/crawler/
 COPY apps/worker/package*.json ./apps/worker/
 
-# 2. Instalação (Instalamos TUDO para garantir que o build funcione)
+# Instalamos todas as dependências (incluindo devDependencies para o build)
 RUN npm install
 
-# 3. Prisma
+# Copiamos o schema e geramos o Client ANTES de copiar o resto do código
 COPY prisma ./prisma/
 RUN npx prisma generate
 
-# 4. Copiar código e Build
+# Agora copiamos o código fonte e rodamos o build
 COPY . .
-# Forçamos o uso do npx no build para garantir que o tsc seja encontrado
 RUN npm run build
 
-# 5. Só agora definimos como produção para a execução
+# Definimos para produção
 ENV NODE_ENV=production
 
+# Permissão para o script de inicialização
 COPY entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
