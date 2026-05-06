@@ -1,16 +1,18 @@
 #!/bin/sh
 set -e
 
-# Garante que o comando Prisma veja a variável correta
-export DATABASE_URL=$TURSO_DATABASE_URL
+# Exporta para garantir que qualquer processo filho veja a variável
+export DATABASE_URL="$TURSO_DATABASE_URL"
 
 echo "🔄 [STEP 1] Sincronizando Schema com Turso..."
-npx prisma db push --accept-data-loss
+# No Prisma 7, a flag --url supre a falta da url no schema.prisma
+npx prisma db push --accept-data-loss --url "$TURSO_DATABASE_URL"
 
 echo "🚀 [STEP 2] Iniciando Serviços de Background..."
-# Use node direto nos caminhos relativos ao WORKDIR (/app)
+# Rodando em background
 node apps/worker/dist/index.js &
 node apps/crawler/dist/index.js &
 
 echo "📡 [STEP 3] Iniciando API principal..."
+# exec substitui o shell pelo processo do node, ideal para logs e sinais do Docker
 exec node apps/api/dist/server.js
