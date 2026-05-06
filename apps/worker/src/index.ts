@@ -1,7 +1,7 @@
 import { Worker, type Job, Queue, type ConnectionOptions } from "bullmq";
 // Ajuste de importação para garantir consistência no ambiente compilado
-import { prisma } from "../../api/dist/lib/prisma.js";
-import { redisConnection } from "../../api/dist/lib/redis.js";
+import { prisma } from "../../api/src/lib/prisma.js";
+import { redisConnection } from "../../api/src/lib/redis.js";
 
 interface CharacterJobData {
   name: string;

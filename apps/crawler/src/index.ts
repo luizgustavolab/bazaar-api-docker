@@ -6,8 +6,8 @@ import {
   fetchAllActiveAuctions,
   type AuctionData,
 } from "./services/bazaarScraper.js";
-import { prisma } from "../../api/dist/lib/prisma.js";
-import { redisConnection } from "../../api/dist/lib/redis.js";
+import { prisma } from "../../api/src/lib/prisma.js";
+import { redisConnection } from "../../api/src/lib/redis.js";
 
 const bullmqConnection = redisConnection as unknown as ConnectionOptions;
 const bazaarQueue = new Queue("bazaar-queue", { connection: bullmqConnection });
