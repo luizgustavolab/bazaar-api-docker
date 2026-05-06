@@ -23,6 +23,8 @@ RUN npx prisma generate
 
 # Agora copiamos o código fonte e rodamos o build
 COPY . .
+ARG DATABASE_URL=""
+ENV DATABASE_URL=$DATABASE_URL
 RUN npm run build
 
 # Definimos para produção
