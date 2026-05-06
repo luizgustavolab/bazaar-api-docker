@@ -3,24 +3,21 @@ import cors from "@fastify/cors";
 import { characterRoutes } from "./routes/character";
 import { healthRoutes } from "./controllers/healthController";
 
-const app = Fastify({
-  logger: true,
-  // Aumenta o tempo de timeout para evitar que conexões com o Turso
-  // em momentos de latência alta derrubem a requisição prematuramente
-  connectionTimeout: 10000,
+const app = Fastify({ logger: true, connectionTimeout: 10000 });
+
+app.register(cors, { origin: true });
+
+// ROTA RAIZ GLOBAL (Resolve o 404 do Render)
+app.get("/", async () => {
+  return { 
+    status: "online", 
+    project: "Tibia Scout API",
+    documentation: "/api/characters" 
+  };
 });
 
-// Configuração de CORS assertiva
-app.register(cors, {
-  // Em produção no Render, você pode substituir 'true' pela URL do seu frontend Vercel
-  origin: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-  credentials: true,
-});
-
-// Registro das rotas
 app.register(healthRoutes);
-app.register(characterRoutes, { prefix: "/api" }); // Opcional: Adiciona prefixo para organizar a API
+app.register(characterRoutes, { prefix: "/api" });
 
 // Tratamento global de erros para não expor detalhes sensíveis do banco em produção
 app.setErrorHandler((error, request, reply) => {

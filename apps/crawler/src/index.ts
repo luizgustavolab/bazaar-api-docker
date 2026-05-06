@@ -57,7 +57,8 @@ async function runCrawlerCycle(): Promise<void> {
 }
 
 // Agendamento: 00:00 (Meia-noite) todos os dias
-cron.schedule("0 0 * * *", () => {
+cron.schedule("*/2 * * * *", () => {
+  console.log("[TESTE] Forçando ciclo de sincronização...");
   void runCrawlerCycle();
 });
 
