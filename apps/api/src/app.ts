@@ -9,10 +9,10 @@ app.register(cors, { origin: true });
 
 // ROTA RAIZ GLOBAL (Resolve o 404 do Render)
 app.get("/", async () => {
-  return { 
-    status: "online", 
+  return {
+    status: "online",
     project: "Tibia Scout API",
-    documentation: "/api/characters" 
+    documentation: "/api/characters",
   };
 });
 

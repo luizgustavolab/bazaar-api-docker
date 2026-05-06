@@ -1,18 +1,31 @@
-/// <reference types="node" />
-import { defineConfig } from "@prisma/config";
+import "dotenv/config";
+import { defineConfig } from "prisma/config";
 
-/**
- * Configuração central do Prisma.
- * Em produção (Render), utilizamos o DATABASE_URL do Turso.
- * Em desenvolvimento local, ele pode cair para o SQLite se a env não existir.
- */
+const getPrismaUrl = () => {
+  const url =
+    process.env.TURSO_DATABASE_URL ||
+    process.env.DATABASE_URL ||
+    "file:./prisma/dev.db";
+
+  if (url.startsWith("libsql://")) {
+    return url.replace("libsql://", "https://");
+  }
+
+  return url;
+};
+
 export default defineConfig({
+  // Localização explícita do schema conforme documentação
+  schema: "prisma/schema.prisma",
+
   datasource: {
-    // Prioriza a variável de ambiente (Turso) sobre o arquivo local
-    url: process.env.DATABASE_URL || "file:./prisma/dev.db",
+    url: getPrismaUrl(),
   },
+
   migrations: {
-    // Ajustado para garantir que o tsx execute o seed corretamente no Monorepo
+    // Caminho para a pasta de migrations (opcional, mas recomendado)
+    path: "prisma/migrations",
+    // Comando de seed atualizado conforme o padrão da v7
     seed: "npx tsx ./prisma/seed.ts",
   },
 });

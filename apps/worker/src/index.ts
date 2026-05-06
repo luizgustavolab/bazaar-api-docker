@@ -22,7 +22,17 @@ const bullmqConnection = redisConnection as unknown as ConnectionOptions;
 const bazaarWorker = new Worker<CharacterJobData>(
   "bazaar-queue",
   async (job: Job<CharacterJobData>) => {
-    const { name, level, vocation, world, outfitUrl, skills, items, price, endsAt } = job.data;
+    const {
+      name,
+      level,
+      vocation,
+      world,
+      outfitUrl,
+      skills,
+      items,
+      price,
+      endsAt,
+    } = job.data;
 
     try {
       // Usamos uma transação ou um upsert robusto
@@ -33,8 +43,14 @@ const bazaarWorker = new Worker<CharacterJobData>(
           vocation,
           world,
           outfitUrl,
-          skills: typeof skills === "object" ? JSON.stringify(skills) : String(skills || "{}"),
-          items: typeof items === "object" ? JSON.stringify(items) : String(items || "[]"),
+          skills:
+            typeof skills === "object"
+              ? JSON.stringify(skills)
+              : String(skills || "{}"),
+          items:
+            typeof items === "object"
+              ? JSON.stringify(items)
+              : String(items || "[]"),
           auction: {
             upsert: {
               create: { price, endsAt: String(endsAt) },
@@ -48,8 +64,14 @@ const bazaarWorker = new Worker<CharacterJobData>(
           vocation,
           world,
           outfitUrl,
-          skills: typeof skills === "object" ? JSON.stringify(skills) : String(skills || "{}"),
-          items: typeof items === "object" ? JSON.stringify(items) : String(items || "[]"),
+          skills:
+            typeof skills === "object"
+              ? JSON.stringify(skills)
+              : String(skills || "{}"),
+          items:
+            typeof items === "object"
+              ? JSON.stringify(items)
+              : String(items || "[]"),
           auction: {
             create: { price, endsAt: String(endsAt) },
           },
@@ -58,7 +80,9 @@ const bazaarWorker = new Worker<CharacterJobData>(
 
       // Removido o console.log excessivo para não sujar o log do Render
     } catch (error: unknown) {
-      console.error(`[WORKER] Falha ao processar ${name}. O job será re-tentado pelo BullMQ.`);
+      console.error(
+        `[WORKER] Falha ao processar ${name}. O job será re-tentado pelo BullMQ.`,
+      );
       throw error; // Lançar o erro permite que o 'attempts' do Crawler funcione
     }
   },
@@ -66,7 +90,7 @@ const bazaarWorker = new Worker<CharacterJobData>(
     connection: bullmqConnection,
     concurrency: 5, // Aumentamos para 5 para processar a carga diária mais rápido
     removeOnComplete: { count: 0 }, // O Crawler já gerencia isso
-  }
+  },
 );
 
 // Listener de erros para monitoramento

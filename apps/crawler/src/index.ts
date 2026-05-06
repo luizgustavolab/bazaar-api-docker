@@ -38,8 +38,8 @@ async function runCrawlerCycle(): Promise<void> {
             endsAt: item.endDate,
           },
           {
-            removeOnComplete: true, 
-            removeOnFail: { count: 10 }, 
+            removeOnComplete: true,
+            removeOnFail: { count: 10 },
             attempts: 3,
             backoff: { type: "exponential", delay: 5000 },
           },
@@ -61,11 +61,11 @@ cron.schedule("*/2 * * * *", () => {
 const start = async (): Promise<void> => {
   try {
     console.log(`[CRAWLER-SERVICE] Rodando em background.`);
-    
+
     // Executa uma vez no boot para popular o banco IMEDIATAMENTE (Sugerido para agora)
     console.log("[CRAWLER] Executando carga inicial...");
     await runCrawlerCycle();
-    
+
     // Mantém o processo vivo
     setInterval(() => {}, 1000 * 60 * 60);
   } catch (err: unknown) {
