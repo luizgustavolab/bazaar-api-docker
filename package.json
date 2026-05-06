@@ -10,7 +10,7 @@
   "scripts": {
     "generate": "npx prisma generate",
     "db:push": "npx prisma db push --schema=./prisma/schema.prisma",
-    "clean": "rimraf dist apps/api/dist apps/crawler/dist apps/worker/dist",
+    "clean": "rm -rf dist apps/api/dist apps/crawler/dist apps/worker/dist",
     "prebuild": "npm run clean",
     "build": "npx prisma generate && tsc -p apps/api/tsconfig.json && tsc -p apps/worker/tsconfig.json && tsc -p apps/crawler/tsconfig.json",
     "start:api": "node apps/api/dist/server.js",
