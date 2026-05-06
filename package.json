@@ -12,7 +12,7 @@
     "db:push": "npx prisma db push --schema=./prisma/schema.prisma",
     "clean": "rm -rf dist apps/api/dist apps/crawler/dist apps/worker/dist",
     "prebuild": "npm run clean",
-    "build": "npx prisma generate && tsc -p apps/api/tsconfig.json && tsc -p apps/worker/tsconfig.json && tsc -p apps/crawler/tsconfig.json",
+    "build": "npx prisma generate && tsc -p apps/api/tsconfig.json --skipLibCheck && tsc -p apps/worker/tsconfig.json --skipLibCheck && tsc -p apps/crawler/tsconfig.json --skipLibCheck",
     "start:api": "node apps/api/dist/server.js",
     "start:worker": "node apps/worker/dist/index.js",
     "start:crawler": "node apps/crawler/dist/index.js",

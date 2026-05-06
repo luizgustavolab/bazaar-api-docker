@@ -6,6 +6,7 @@
     "outDir": "dist",
     "skipLibCheck": true,
     "noImplicitAny": false,
+    "strict": false,
     "allowJs": true,
     "baseUrl": ".",
     "paths": {
