@@ -1,6 +1,6 @@
-import { Worker, Job, Queue, ConnectionOptions } from "bullmq";
-import { prisma } from "../../api/src/lib/prisma";
-import { redisConnection } from "../../api/src/lib/redis";
+import { Worker, type Job, Queue, type ConnectionOptions } from "bullmq";
+import { prisma } from "../../api/dist/lib/prisma.js";
+import { redisConnection } from "../../api/dist/lib/redis.js";
 
 interface CharacterJobData {
   name: string;
@@ -11,17 +11,23 @@ interface CharacterJobData {
   skills?: string | object;
   items?: string | object;
   price: number;
+  auctionId: number;
   endsAt: string | number;
 }
 
-// Resolve o erro de incompatibilidade de tipos do ioredis de forma estrita
+// Interface para a limpeza
+interface ExpiredAuctionResult {
+  id: number;
+  characterId: number;
+}
+
 const bullmqConnection = redisConnection as unknown as ConnectionOptions;
 
 const cleanupQueue = new Queue("cleanup-queue", {
   connection: bullmqConnection,
 });
 
-async function setupCleanupJob() {
+async function setupCleanupJob(): Promise<void> {
   await cleanupQueue.add(
     "clean-expired-auctions",
     {},
@@ -92,7 +98,7 @@ new Worker<CharacterJobData>(
       });
 
       console.log(`[WORKER] ${name} sincronizado com sucesso.`);
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`[WORKER] Erro ao processar ${name}:`, error);
       throw error;
     }
@@ -118,8 +124,13 @@ new Worker(
         });
 
         if (expiredAuctions.length > 0) {
-          const auctionIds = expiredAuctions.map((a) => a.id);
-          const characterIds = expiredAuctions.map((a) => a.characterId);
+          // TIPAGEM EXPLÍCITA AQUI PARA TS7006
+          const auctionIds = expiredAuctions.map(
+            (a: ExpiredAuctionResult) => a.id,
+          );
+          const characterIds = expiredAuctions.map(
+            (a: ExpiredAuctionResult) => a.characterId,
+          );
 
           await prisma.$transaction([
             prisma.auction.deleteMany({ where: { id: { in: auctionIds } } }),
@@ -132,7 +143,7 @@ new Worker(
             `[CLEANUP] ${auctionIds.length} leilões expirados removidos.`,
           );
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("[CLEANUP] Erro na limpeza:", error);
         throw error;
       }
@@ -141,4 +152,4 @@ new Worker(
   { connection: bullmqConnection },
 );
 
-setupCleanupJob().catch(console.error);
+void setupCleanupJob().catch(console.error);

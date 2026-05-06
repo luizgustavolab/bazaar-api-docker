@@ -1,18 +1,14 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "composite": true,
-    "rootDir": "../../",
+    "composite": false,
+    "rootDir": "src",
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
       "@api/*": ["../api/src/*"]
     }
   },
-  "include": [
-    "src/**/*",
-    "../api/src/lib/prisma.ts",
-    "../api/src/lib/redis.ts"
-  ],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
 }

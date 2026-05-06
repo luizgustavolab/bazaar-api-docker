@@ -2,6 +2,8 @@
   "name": "api",
   "version": "1.0.0",
   "main": "dist/server.js",
+  "type": "module",
+  
   "scripts": {
     "build": "tsc",
     "start": "npx prisma db push --schema=../../prisma/schema.prisma && ts-node src/server.ts",

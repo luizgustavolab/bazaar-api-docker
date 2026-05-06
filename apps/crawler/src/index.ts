@@ -1,23 +1,23 @@
-import { Queue, ConnectionOptions } from "bullmq";
+import { Queue, type ConnectionOptions } from "bullmq";
 import cron from "node-cron";
-import app from "../../api/src/app";
-import { fetchAllActiveAuctions, AuctionData } from "./services/bazaarScraper";
-import { prisma } from "../../api/src/lib/prisma";
-import { redisConnection } from "../../api/src/lib/redis";
+import type { FastifyInstance } from "fastify";
+
+import appInstance from "../../api/dist/app.js";
+import {
+  fetchAllActiveAuctions,
+  type AuctionData,
+} from "./services/bazaarScraper.js";
+import { prisma } from "../../api/dist/lib/prisma.js";
+import { redisConnection } from "../../api/dist/lib/redis.js";
 
 const bullmqConnection = redisConnection as unknown as ConnectionOptions;
+const bazaarQueue = new Queue("bazaar-queue", { connection: bullmqConnection });
 
-const bazaarQueue = new Queue("bazaar-queue", {
-  connection: bullmqConnection,
-});
-
-async function startCrawler() {
+async function runCrawlerCycle(): Promise<void> {
   try {
-    let totalSent = 0;
     const now = new Date().toLocaleString("pt-BR", {
       timeZone: "America/Sao_Paulo",
     });
-
     console.log(`[CRAWLER] [${now}] Iniciando sincronização...`);
 
     await prisma.$queryRaw`SELECT 1`;
@@ -32,45 +32,41 @@ async function startCrawler() {
             vocation: item.vocation,
             world: item.world,
             outfitUrl: item.outfitUrl,
-            price: item.currentBid,
-            endsAt: item.endDate,
-            auctionId: item.auctionId,
             skills: item.skills,
             items: item.items,
+            price: item.currentBid,
+            auctionId: item.auctionId,
+            endsAt: item.endDate,
           },
           {
-            removeOnComplete: { count: 20, age: 3600 },
-            removeOnFail: { count: 50, age: 24 * 3600 },
+            removeOnComplete: { count: 20 },
             attempts: 3,
             backoff: { type: "exponential", delay: 2000 },
           },
         );
       }
-      totalSent += items.length;
     });
-
-    console.log(`[CRAWLER] Sincronização finalizada. Total: ${totalSent} leilões.`);
+    console.log(`[CRAWLER] Ciclo finalizado.`);
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : "Erro crítico";
-    console.error("[CRAWLER] Erro:", errorMessage);
+    const msg = error instanceof Error ? error.message : "Unknown Error";
+    console.error("[CRAWLER] Erro:", msg);
   }
 }
 
-cron.schedule("0 0 * * *", async () => {
-  await startCrawler();
+cron.schedule("0 0 * * *", () => {
+  void runCrawlerCycle();
 });
 
-const start = async () => {
+const start = async (): Promise<void> => {
   try {
     const port = Number(process.env.PORT) || 3333;
-    await app.listen({ port, host: "0.0.0.0" });
-    console.log(`[CRAWLER-SERVICE] Health check online na porta ${port}`);
-    await startCrawler();
+    const fastifyApp = appInstance as unknown as FastifyInstance;
+    await fastifyApp.listen({ port, host: "0.0.0.0" });
+    console.log(`[CRAWLER-SERVICE] Online na porta ${port}`);
+    await runCrawlerCycle();
   } catch (err: unknown) {
-    const errorMessage = err instanceof Error ? err.message : "Falha ao iniciar servidor";
-    console.error("[CRAWLER-SERVICE]", errorMessage);
     process.exit(1);
   }
 };
 
-start();
+void start();

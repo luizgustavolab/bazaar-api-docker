@@ -5,33 +5,22 @@
     "moduleResolution": "NodeNext",
     "lib": ["ES2022"],
     "types": ["node"],
-    
-    // Configuração de caminhos para facilitar imports entre apps
+    "ignoreDeprecations": "5.0",
     "baseUrl": ".",
     "paths": {
       "@api/*": ["./apps/api/src/*"],
       "@worker/*": ["./apps/worker/src/*"],
       "@crawler/*": ["./apps/crawler/src/*"]
     },
-
-    "composite": true,
     "declaration": true,
     "declarationMap": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
-    "isolatedModules": true, // Importante para ferramentas como tsx e esbuild
+    "isolatedModules": true,
     "resolveJsonModule": true
   },
-  "files": [],
-  "include": [
-    "prisma/**/*.ts"
-  ],
-  "references": [
-    { "path": "./apps/api" },
-    { "path": "./apps/crawler" },
-    { "path": "./apps/worker" }
-  ],
+  "include": ["prisma/**/*.ts"],
   "exclude": ["node_modules", "**/dist"]
 }
