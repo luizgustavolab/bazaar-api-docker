@@ -4,6 +4,9 @@
     "composite": false,
     "rootDir": "src",
     "outDir": "dist",
+    "skipLibCheck": true,
+    "noImplicitAny": false,
+    "allowJs": true,
     "baseUrl": ".",
     "paths": {
       "@api/*": ["../api/src/*"]
