@@ -1,14 +1,13 @@
-// Configuração do gerador para aceitar o Driver Adapter (Turso/LibSQL)
+
 generator client {
   provider        = "prisma-client-js"
-  url      = env("TURSO_DATABASE_URL")
   previewFeatures = ["driverAdapters"]
 }
 
-// Mantemos sqlite como provider, o adapter do LibSQL fará a ponte em runtime
 datasource db {
   provider = "sqlite"
-  }
+  url      = env("DATABASE_URL")
+}
 
 model Character {
   id        Int      @id @default(autoincrement())
