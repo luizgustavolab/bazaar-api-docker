@@ -1,8 +1,7 @@
 import { Queue, type ConnectionOptions } from "bullmq";
 import cron from "node-cron";
-import type { FastifyInstance } from "fastify";
 
-import appInstance from "../../api/dist/app.js";
+// Importe diretamente o que você precisa, sem trazer o app (servidor) da API
 import {
   fetchAllActiveAuctions,
   type AuctionData,
@@ -18,9 +17,8 @@ async function runCrawlerCycle(): Promise<void> {
     const now = new Date().toLocaleString("pt-BR", {
       timeZone: "America/Sao_Paulo",
     });
-    console.log(`[CRAWLER] [${now}] Iniciando sincronização diária...`);
+    console.log(`[CRAWLER] [${now}] Iniciando sincronização...`);
 
-    // Valida conexão com o Turso antes de começar o scraping pesado
     await prisma.$queryRaw`SELECT 1`;
 
     await fetchAllActiveAuctions(async (items: AuctionData[]) => {
@@ -40,41 +38,36 @@ async function runCrawlerCycle(): Promise<void> {
             endsAt: item.endDate,
           },
           {
-            // removeOnComplete: true economiza muitos comandos no Upstash
             removeOnComplete: true, 
             removeOnFail: { count: 10 }, 
             attempts: 3,
-            backoff: { type: "exponential", delay: 5000 }, // Delay maior para resiliência
+            backoff: { type: "exponential", delay: 5000 },
           },
         );
       }
     });
-    console.log(`[CRAWLER] Ciclo finalizado com sucesso.`);
+    console.log(`[CRAWLER] Ciclo finalizado. Itens enviados para a fila.`);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Unknown Error";
-    console.error("[CRAWLER] Erro crítico no ciclo:", msg);
+    console.error("[CRAWLER] Erro crítico:", msg);
   }
 }
 
-// Agendamento: 00:00 (Meia-noite) todos os dias
+// Agendamento: A cada 2 minutos (para teste inicial)
 cron.schedule("*/2 * * * *", () => {
-  console.log("[TESTE] Forçando ciclo de sincronização...");
   void runCrawlerCycle();
 });
 
 const start = async (): Promise<void> => {
   try {
-    const port = Number(process.env.PORT) || 3333;
-    const fastifyApp = appInstance as unknown as FastifyInstance;
+    console.log(`[CRAWLER-SERVICE] Rodando em background.`);
     
-    // Escuta na porta para o Render não dar 'Health Check Failed'
-    await fastifyApp.listen({ port, host: "0.0.0.0" });
-    console.log(`[CRAWLER-SERVICE] Monitor de Health Check online.`);
+    // Executa uma vez no boot para popular o banco IMEDIATAMENTE (Sugerido para agora)
+    console.log("[CRAWLER] Executando carga inicial...");
+    await runCrawlerCycle();
     
-    // IMPORTANTE: Removido o runCrawlerCycle() automático do boot 
-    // para evitar que cada deploy ou restart do Render gaste créditos 
-    // fora do horário programado.
-    console.log("[CRAWLER] Aguardando próximo ciclo agendado (00:00).");
+    // Mantém o processo vivo
+    setInterval(() => {}, 1000 * 60 * 60);
   } catch (err: unknown) {
     console.error("[CRAWLER-SERVICE] Falha ao iniciar:", err);
     process.exit(1);
