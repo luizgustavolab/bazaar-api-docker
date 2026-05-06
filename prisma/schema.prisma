@@ -1,11 +1,13 @@
+// Configuração do gerador para aceitar o Driver Adapter (Turso/LibSQL)
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
+// Mantemos sqlite como provider, o adapter do LibSQL fará a ponte em runtime
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
-}
+  }
 
 model Character {
   id        Int      @id @default(autoincrement())
@@ -15,9 +17,13 @@ model Character {
   world     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  
+  // Armazenados como JSON String (JSON.stringify / JSON.parse)
   items     String?
   outfitUrl String?
   skills    String?
+  
+  // Relação 1:1 com Auction
   auction   Auction?
 }
 
@@ -26,6 +32,7 @@ model Auction {
   characterId Int       @unique
   price       Int
   startedAt   DateTime  @default(now())
-  endsAt      String
-  character   Character @relation(fields: [characterId], references: [id])
+  endsAt      String    // Mantido como String conforme seu crawler/worker
+  
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 }

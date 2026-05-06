@@ -1,7 +1,29 @@
+# Dependências
 node_modules
-npm-debug.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Compilação e Build
 dist
+.turbo
+.next
+out
+
+# Variáveis Sensíveis
 .env
-dist
+.env.*
+!.env.example
+
+# Banco de Dados Local (SQLite)
 prisma/*.db
 prisma/*.db-journal
+prisma/dev.db
+
+# Git e IDEs
+.git
+.gitignore
+.vscode
+.idea
+.DS_Store
+

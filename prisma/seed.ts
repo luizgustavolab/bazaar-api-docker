@@ -1,30 +1,45 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "../apps/api/src/lib/prisma";
+import "dotenv/config";
 
-const prisma = new PrismaClient();
+const characters = [
+  { name: "Arthas", level: 100, vocation: "Knight", world: "Antica" },
+  { name: "Jaina", level: 90, vocation: "Sorcerer", world: "Antica" },
+];
 
 async function main() {
-  const characters = [
-    { name: "Arthas", level: 150, vocation: "Knight", world: "Antica" },
-    { name: "Jaina", level: 130, vocation: "Sorcerer", world: "Antica" },
-    { name: "Thrall", level: 140, vocation: "Paladin", world: "Carlin" },
-    { name: "Illidan", level: 160, vocation: "Druid", world: "Carlin" },
-    { name: "Sylvanas", level: 120, vocation: "Sorcerer", world: "Venore" },
-  ];
+  console.log("--- 🌱 Iniciando Seed (Turso Cloud Mode) ---");
 
-  for (const char of characters) {
-    await prisma.character.create({
-      data: char,
-    });
+  try {
+    // Teste de conexão inicial
+    await prisma.$connect();
+    console.log("✅ Conexão com Turso estabelecida.");
+
+    for (const char of characters) {
+      console.log(`Checking character: ${char.name}`);
+
+      await prisma.character.upsert({
+        where: { name: char.name },
+        update: {
+          level: char.level,
+          vocation: char.vocation,
+          world: char.world,
+        },
+        create: {
+          name: char.name,
+          level: char.level,
+          vocation: char.vocation,
+          world: char.world,
+        },
+      });
+    }
+
+    console.log("--- ✅ Seed finalizado com sucesso no Turso! ---");
+  } catch (error) {
+    console.error("❌ Erro durante a execução do Seed:", error);
+    process.exit(1);
+  } finally {
+    await prisma.$disconnect();
   }
-
-  console.log("Seed data inserted!");
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main();

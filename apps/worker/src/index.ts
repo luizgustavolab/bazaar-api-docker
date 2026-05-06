@@ -1,17 +1,24 @@
-import { Worker, Job, Queue } from "bullmq";
-import IORedis from "ioredis";
-import { PrismaClient } from "@prisma/client";
+import { Worker, Job, Queue, ConnectionOptions } from "bullmq";
+import { prisma } from "../../api/src/lib/prisma";
+import { redisConnection } from "../../api/src/lib/redis";
 
-const prisma = new PrismaClient();
+interface CharacterJobData {
+  name: string;
+  level: number;
+  vocation: string;
+  world: string;
+  outfitUrl?: string;
+  skills?: string | object;
+  items?: string | object;
+  price: number;
+  endsAt: string | number;
+}
 
-const connection = new IORedis({
-  host: process.env.REDIS_HOST || "127.0.0.1",
-  port: Number(process.env.REDIS_PORT) || 6379,
-  maxRetriesPerRequest: null,
-});
+// Resolve o erro de incompatibilidade de tipos do ioredis de forma estrita
+const bullmqConnection = redisConnection as unknown as ConnectionOptions;
 
 const cleanupQueue = new Queue("cleanup-queue", {
-  connection: connection as unknown as Queue["opts"]["connection"],
+  connection: bullmqConnection,
 });
 
 async function setupCleanupJob() {
@@ -19,29 +26,29 @@ async function setupCleanupJob() {
     "clean-expired-auctions",
     {},
     {
-      repeat: {
-        pattern: "0 0 * * *",
-      },
+      jobId: "daily-cleanup",
+      repeat: { pattern: "0 0 * * *" },
+      removeOnComplete: true,
     },
   );
 }
 
-new Worker(
+new Worker<CharacterJobData>(
   "bazaar-queue",
-  async (job: Job) => {
-    try {
-      const {
-        name,
-        level,
-        vocation,
-        world,
-        outfitUrl,
-        skills,
-        items,
-        price,
-        endsAt,
-      } = job.data;
+  async (job: Job<CharacterJobData>) => {
+    const {
+      name,
+      level,
+      vocation,
+      world,
+      outfitUrl,
+      skills,
+      items,
+      price,
+      endsAt,
+    } = job.data;
 
+    try {
       await prisma.character.upsert({
         where: { name },
         update: {
@@ -49,12 +56,18 @@ new Worker(
           vocation,
           world,
           outfitUrl,
-          skills: skills ? JSON.stringify(skills) : "{}",
-          items: items ? JSON.stringify(items) : "[]",
+          skills:
+            typeof skills === "object"
+              ? JSON.stringify(skills)
+              : String(skills || "{}"),
+          items:
+            typeof items === "object"
+              ? JSON.stringify(items)
+              : String(items || "[]"),
           auction: {
             upsert: {
-              create: { price, endsAt },
-              update: { price, endsAt },
+              create: { price, endsAt: String(endsAt) },
+              update: { price, endsAt: String(endsAt) },
             },
           },
         },
@@ -64,24 +77,31 @@ new Worker(
           vocation,
           world,
           outfitUrl,
-          skills: skills ? JSON.stringify(skills) : "{}",
-          items: items ? JSON.stringify(items) : "[]",
+          skills:
+            typeof skills === "object"
+              ? JSON.stringify(skills)
+              : String(skills || "{}"),
+          items:
+            typeof items === "object"
+              ? JSON.stringify(items)
+              : String(items || "[]"),
           auction: {
-            create: { price, endsAt },
+            create: { price, endsAt: String(endsAt) },
           },
         },
       });
 
-      console.log(`[WORKER] Dados de ${name} sincronizados.`);
+      console.log(`[WORKER] ${name} sincronizado com sucesso.`);
     } catch (error) {
-      console.error(`[WORKER] Erro no job ${job.id}:`, error);
+      console.error(`[WORKER] Erro ao processar ${name}:`, error);
       throw error;
     }
   },
   {
-    connection: connection as unknown as Worker["opts"]["connection"],
-    removeOnComplete: { count: 100 },
-    removeOnFail: { count: 500 },
+    connection: bullmqConnection,
+    removeOnComplete: { count: 20 },
+    removeOnFail: { count: 50 },
+    concurrency: 2,
   },
 );
 
@@ -101,25 +121,24 @@ new Worker(
           const auctionIds = expiredAuctions.map((a) => a.id);
           const characterIds = expiredAuctions.map((a) => a.characterId);
 
-          await prisma.auction.deleteMany({
-            where: { id: { in: auctionIds } },
-          });
-
-          await prisma.character.deleteMany({
-            where: { id: { in: characterIds } },
-          });
+          await prisma.$transaction([
+            prisma.auction.deleteMany({ where: { id: { in: auctionIds } } }),
+            prisma.character.deleteMany({
+              where: { id: { in: characterIds } },
+            }),
+          ]);
 
           console.log(
-            `[CLEANUP-WORKER] Removidos ${auctionIds.length} leilões e seus personagens correspondentes.`,
+            `[CLEANUP] ${auctionIds.length} leilões expirados removidos.`,
           );
         }
       } catch (error) {
-        console.error("[CLEANUP-WORKER] Erro ao limpar leiloes:", error);
+        console.error("[CLEANUP] Erro na limpeza:", error);
         throw error;
       }
     }
   },
-  { connection: connection as unknown as Worker["opts"]["connection"] },
+  { connection: bullmqConnection },
 );
 
-setupCleanupJob();
+setupCleanupJob().catch(console.error);

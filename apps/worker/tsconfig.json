@@ -1,17 +1,21 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "rootDir": "src",
-    "outDir": "dist",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
-    "types": ["node"]
+    "composite": true,
+    "outDir": "./dist",
+    "rootDir": "../../",
+    "baseUrl": ".",
+    "paths": {
+      "@api/*": ["../api/src/*"]
+    }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/**/*",
+    "../api/src/lib/prisma.ts",
+    "../api/src/lib/redis.ts"
+  ],
+  "exclude": ["node_modules", "dist"],
+  "references": [
+    { "path": "../api" }
+  ]
 }

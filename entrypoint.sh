@@ -1,23 +1,20 @@
 #!/bin/sh
 
-# 1. Iniciar o servidor Redis em background
-echo "Iniciando Redis..."
-redis-server --daemonize yes
+# 1. Sincroniza o banco Turso com o schema do Prisma
+# O --accept-data-loss é necessário para o Turso em certos tipos de alteração de schema
+echo "🔄 Sincronizando banco Turso..."
+npx prisma db push --accept-data-loss
 
-# 2. Rodar sincronização do Prisma (SQLite)
-# Importante: O schema está na raiz do monorepo
-echo "Sincronizando banco de dados..."
-npx prisma db push --schema=./prisma/schema.prisma
-
-# 3. Iniciar o Worker em background (usa o script da raiz)
-echo "Iniciando Worker..."
+# 2. Inicia os processos de background (Worker e Crawler)
+# Usamos o '&' para rodar em paralelo
+echo "🚀 Iniciando Worker..."
 npm run start:worker &
 
-# 4. Iniciar o Crawler em background (usa o script da raiz)
-echo "Iniciando Crawler..."
+echo "🕵️ Iniciando Crawler..."
 npm run start:crawler &
 
-# 5. Iniciar a API em foreground (mantém o container vivo)
-# Como não usamos '&', o container ficará rodando enquanto a API estiver ativa
-echo "Iniciando API..."
-npm run start:api
+# 3. Inicia a API (Processo Principal)
+# Usamos 'exec' para que o Node.js assuma o PID 1. 
+# Isso permite que o Render desligue o container graciosamente quando necessário.
+echo "📡 API Online na porta 3333..."
+exec npm run start:api

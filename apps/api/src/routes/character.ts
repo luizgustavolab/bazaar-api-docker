@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { Prisma } from "@prisma/client";
-import prisma from "../prismaClient";
+import { prisma } from "../lib/prisma";
 import { formatCharacterData } from "../utils/formatters";
 
 interface CharacterQuery {

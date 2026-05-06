@@ -1,101 +1,86 @@
-## 🛡️⚙️ Bazaar API - Tibia Scout Backend - DOCKER
+## 🛡️⚙️ Bazaar API - Tibia Scout Backend (Monorepo)
+Este é o motor central do ecossistema Tibia Scout. Um monorepo de alta performance responsável pelo web scraping, processamento de dados do Tibia Bazaar (CipSoft) e distribuição via API REST, agora otimizado para bancos de dados distribuídos.
 
-Este é o motor central do ecossistema Tibia Scout. Ele é responsável pelo web scraping de alta performance, processamento de dados do Tibia Bazaar (CipSoft) e distribuição desses dados via API REST.
-
-Este projeto atua como o Backend obrigatório para o funcionamento das funcionalidades de mercado do projeto:
-🔗 Tibia Scout Frontend [https://github.com/luizgustavolab/tibia-scout.git](https://github.com/luizgustavolab/tibia-scout.git)
+Este projeto é o backend obrigatório para:
+🔗 Tibia Scout Frontend: github.com/luizgustavolab/tibia-scout
 
 ## 🏗️ Arquitetura do Projeto
 
-> - O projeto utiliza o conceito de NPM Workspaces (Monorepo). Essa estrutura permite que a API e os serviços de coleta compartilhem tipos e lógica de banco de dados, mantendo a separação de responsabilidades:
+> - O projeto utiliza NPM Workspaces (Monorepo). Esta estrutura permite que todos os apps compartilhem uma camada lógica centralizada (lib), garantindo consistência de dados e tipagem:
 
-    apps/api: Servidor Fastify que entrega os dados processados ao Frontend.
-    apps/crawler: Motor de scraping que extrai dados brutos do site oficial do Tibia.
-    apps/worker: Orquestrador de tarefas que gerencia a persistência e atualização do banco de dados.
+apps/api: Servidor Fastify que entrega os dados processados.
+apps/crawler: Motor de scraping (Vite-like/TypeScript) que extrai dados do site oficial.
+apps/worker: Orquestrador BullMQ para persistência e limpeza de dados expirados.
+shared (internal): Lógica centralizada de conexão com Prisma/Turso e Redis.
 
 ## 🛠️ Stack Tecnológica
 
-    untime: Node.js (v20+) + TypeScript
-    Framework Web: Fastify v4
-    ORM: Prisma (v5+)
-    Banco de Dados: SQLite (Foco em portabilidade e persistência em container)
-    Fila/Tasks: BullMQ + Redis (Interno ao container)
+    Runtime: Node.js (v20+) + TypeScript
+    Framework Web: Fastify v4/v5
+    ORM: Prisma v7 (Otimizado para Turso/libSQL)
+    Banco de Dados: Turso (SQLite Distribuído) para persistência resiliente.
+    Fila/Tasks: BullMQ + Redis (Suporte a Upstash e Local)
     Agendamento: Node-cron
 
-## Conteinerização & Deploy (Foco no Render)
+## 🚀 Novas Implementações e Melhorias
 
-> Diferente de arquiteturas tradicionais que exigem múltiplos serviços pagos separadamente, esta aplicação foi desenhada para rodar em um único container no plano gratuito do Render:
+Recentemente atualizado para maior escalabilidade:
+  *Arquitetura Centralizada:* Agora as instâncias do Prisma e do Redis residem em uma lib compartilhada dentro de apps/api, evitando múltiplas conexões desnecessárias.
+  *Migração para Turso:* Saída do SQLite local puro para o Turso (libSQL), permitindo que os dados persistam de forma independente do ciclo de vida do container.
+  *Tipagem Estrita:* Implementação de Casting Seguro para as conexões do BullMQ, resolvendo conflitos de versão entre ioredis e as definições de tipo do worker.
+  *Eficiência de Memória:* Configuração rigorosa de removeOnComplete e attempts no BullMQ para operar dentro dos limites do Upstash Free Tier e do Render Free.
 
-**⚙️ Estratégia de Container Único**
-Para contornar as limitações de memória (512MB RAM), o projeto utiliza um entrypoint.sh que gerencia:
-Redis Interno: Instalado e executado dentro do próprio container para gerenciar as filas do BullMQ sem custos extras.
-Execução Nativa: Todos os apps são compilados para JavaScript puro (dist/) antes do deploy, reduzindo drasticamente o uso de CPU e RAM em comparação ao ts-node.
-Persistence (SQLite): O banco de dados reside no sistema de arquivos do container.
-
-**🚀 Configuração para Deploy no Render**
-Ao conectar este repositório ao Render, utilize:
-Runtime: Docker
-Plano: Free
-Variáveis de Ambiente:
-PORT: 3333
-DATABASE_URL: file:/app/prisma/dev.db
-REDIS_HOST: 127.0.0.1 (O Redis estará rodando localmente no container)
-
-## 🚀 Guia do Programador: Como Rodar Localmente
-
+## 🚀 Guia de Execução Local
 📋 Pré-requisitos
+Node.js v20+
+Instância Redis (Local ou Upstash)
+Token/URL do Turso (ou SQLite local para dev)
 
-- Node.js v20+ e NPM.
-- Docker instalado (opcional, para testes de container).
-- Redis instalado (caso não use Docker localmente).
+**🔧 Instalação**
+  Clone e Instale:
+    git clone https://github.com/luizgustavolab/bazaar-api-docker.git
+    cd bazaar-api-docker
+    npm install
 
-## 🔧 Instalação Passo a Passo
-
-1. **Clone o repositório:**
-   git clone [https://github.com/luizgustavolab/bazaar-api-docker.git](https://github.com/luizgustavolab/bazaar-api-docker.git)
-   cd bazaar-api-docker
-
-2. **Instale as dependências (Raiz do Monorepo):**
-   npm install
-
-3. **Configuração do Banco de Dados:**
-
-- Gere o cliente do Prisma e sincronize o esquema com o seu arquivo SQLite local:
-  npx prisma generate
-  npx prisma db push
-
-4.  **🔐 Variáveis de Ambiente (.env)**
-    O projeto utiliza variáveis de ambiente para gerenciar conexões e portas.
-    Crie um arquivo .env na raiz do projeto com:
-        - PORT - Porta onde a API será exposta = 3333
-        - DATABASE_URL - Caminho do banco SQLite = file:./prisma/dev.db
-        - REDIS_HOST - Host do servidor Redis = 127.0.0.1
-        - REDIS_PORT - Porta do servidor Redis = 6379
-
-No ambiente Render (Docker), o REDIS_HOST deve ser obrigatoriamente 127.0.0.1, pois o serviço Redis é inicializado internamente no mesmo container pelo entrypoint.sh.
-
-5. **🏃 Execução**
-
-- Para rodar em modo de desenvolvimento com Hot Reload em todos os serviços simultaneamente:
-  npm run dev
-
-- Como rodar localmente (Docker)
-  Certifique-se de ter as variáveis de ambiente no .env.
-  Execute o comando:
-  docker build -t bazaar-api-docker
-  docker run -p 3333:3333 bazaar-api-docker
+  Configuração do Banco (Prisma v7):
+    npx prisma generate
+    npx prisma db push
+   
+  Variáveis de Ambiente (.env):
+    Crie um `.env` na raiz:
+    PORT=3333
+    DATABASE_URL="libsql://seu-projeto.turso.io"
+    DATABASE_AUTH_TOKEN="seu-token-aqui"
+    REDIS_HOST=127.0.0.1
+    REDIS_PORT=6379
+  
+  Execução em Desenvolvimento:
+    npm run dev
 
 ## 📡 Endpoints Principais
+  GET /health: Check de saúde da aplicação e integridade do Turso/Redis.
+  GET /characters: Lista de personagens processados com filtros.
+  GET /bazaar: Dados brutos do scraping e status do leilão.
 
-- GET /health: Check de saúde da aplicação e conexão com banco.
-- GET /characters: Retorna a lista de personagens processados do Bazaar.
-- GET /bazaar: Retorna dados ativos e filtros do leilão.
 
-## 🏗️ Decisões Técnicas e Desafios
+## 📦 Conteinerização & Deploy (Foco no Render)
+Diferente de arquiteturas tradicionais que exigem múltiplos serviços pagos separadamente, esta aplicação foi desenhada para rodar em um único container no plano gratuito do Render:
 
-- **Migração de Infraestrutura:** Saída do Railway para Docker/Render visando maior controle sobre os processos de background (Worker/Crawler).
-- **Otimização de Memória:** Substituição da execução via ts-node por código compilado no ambiente de produção.
-- **Resiliência no Boot:** O Crawler é acionado imediatamente ao subir o container para garantir que o banco SQLite seja povoado no primeiro deploy.
+⚙️ Estratégia de Container Único
+Para contornar as limitações de memória (512MB RAM), o projeto utiliza um entrypoint.sh que gerencia:
+  Redis Interno: Instalado e executado dentro do próprio container para gerenciar as filas do BullMQ sem custos extras.
+  Execução Nativa: Todos os apps são compilados para JavaScript puro (dist/) antes do deploy, reduzindo drasticamente o uso de CPU e RAM.
+  Persistence: Otimizado para SQLite (local) ou Turso (cloud), garantindo que os dados sobrevivam aos restarts do container.
+
+**🚀 Configuração para Deploy no Render**
+  Runtime: Docker
+  Plano: Free
+  Variáveis de Ambiente:
+  REDIS_PORT
+  REDIS_HOST
+  REDIS_PASSWORD
+  TURSO_AUTH_TOKEN
+  TURSO_DATABASE_URL
 
 ## 🔄 Padrão de Commits
 

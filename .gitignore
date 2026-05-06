@@ -76,3 +76,8 @@ vite.config.ts.timestamp-*
 *.njsproj
 *.sln
 *.swp
+
+
+
+*.js
+*.d.ts

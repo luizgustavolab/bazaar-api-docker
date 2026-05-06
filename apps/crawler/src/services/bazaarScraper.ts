@@ -88,13 +88,13 @@ export function parseBazaarHTML(html: string): AuctionData[] {
         skills.push($(el).text().trim());
       });
 
-    const items: string[] = [];
+    const itemsFound: string[] = [];
     $(element)
       .find(".AuctionItemsViewBox .CVIcon")
       .each((_, el) => {
         const itemTitle = $(el).attr("title");
         if (itemTitle && !itemTitle.includes("no item")) {
-          items.push(itemTitle);
+          itemsFound.push(itemTitle);
         }
       });
 
@@ -109,7 +109,7 @@ export function parseBazaarHTML(html: string): AuctionData[] {
         endDate,
         outfitUrl,
         skills,
-        items,
+        items: itemsFound,
       });
     }
   });
@@ -118,35 +118,32 @@ export function parseBazaarHTML(html: string): AuctionData[] {
 }
 
 export async function fetchAllActiveAuctions(
-  onPageProcessed: (items: AuctionData[]) => Promise<void>,
+  // eslint-disable-next-line no-unused-vars
+  onPageProcessed: (data: AuctionData[]) => Promise<void>,
 ): Promise<void> {
   let currentPage = 1;
   let totalPages = 1;
 
   try {
     do {
-      console.log(`[SCRAPER] Buscando pagina ${currentPage}...`);
       const html = await fetchBazaarPage(currentPage);
 
       if (currentPage === 1) {
         totalPages = parseTotalPages(html);
-        console.log(`[SCRAPER] Total de paginas detectadas: ${totalPages}`);
+        console.log(`[SCRAPER] Total de páginas: ${totalPages}`);
       }
 
-      const items = parseBazaarHTML(html);
+      const auctionData = parseBazaarHTML(html);
 
-      if (items.length > 0) {
-        await onPageProcessed(items);
+      if (auctionData.length > 0) {
+        await onPageProcessed(auctionData);
       }
 
       currentPage++;
-
-      if (currentPage <= totalPages) {
-        await sleep(2000);
-      }
+      if (currentPage <= totalPages) await sleep(2000);
     } while (currentPage <= totalPages);
   } catch (error) {
-    console.error("[SCRAPER] Erro fatal na captura das paginas:", error);
+    console.error("[SCRAPER] Erro fatal:", error);
   }
 }
 

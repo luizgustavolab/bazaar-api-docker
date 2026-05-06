@@ -1,8 +1,9 @@
 import { FastifyRequest, FastifyReply } from "fastify";
-import prisma from "../prismaClient";
+import { prisma } from "../lib/prisma";
 import { formatCharacterData } from "../utils/formatters";
 
-export const getCharacters = async (_request: FastifyRequest) => {
+// Removido o parâmetro não utilizado para limpar o lint
+export const getCharacters = async () => {
   const characters = await prisma.character.findMany({
     include: {
       auction: true,
@@ -18,7 +19,6 @@ export const getCharacterById = async (
   reply: FastifyReply,
 ) => {
   const { id } = request.params as { id: string };
-
   const charId = parseInt(id);
 
   if (isNaN(charId)) {

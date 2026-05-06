@@ -1,36 +1,37 @@
-# 1. Base Node 20 slim
+# Usamos a versão 20-slim por ser leve e estável
 FROM node:20-slim
 
-# Instalar dependências: openssl para o Prisma e o servidor Redis
+# Instalar openssl (motor do Prisma) e ca-certificates (necessário para o Turso/HTTPS)
 RUN apt-get update && apt-get install -y \
     openssl \
-    redis-server \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# 2. Diretório de trabalho
 WORKDIR /app
 
-# 3. Copiar arquivos de dependências e schema do Prisma
+# 1. Copiar definições de dependências (Otimização de Cache)
 COPY package*.json ./
-COPY prisma ./prisma/
+COPY apps/api/package*.json ./apps/api/
+COPY apps/crawler/package*.json ./apps/crawler/
+COPY apps/worker/package*.json ./apps/worker/
 
-# 4. Instalar as dependências e gerar o Prisma Client
+# 2. Instalação das dependências
 RUN npm install
+
+# 3. Gerar o Prisma Client
+# Importante: Copiamos o schema antes de rodar o generate
+COPY prisma ./prisma/
 RUN npx prisma generate
 
-# 5. Copiar o restante do código do projeto
+# 4. Copiar o restante do código e fazer o Build
 COPY . .
-
-# --- ADICIONE ESTA LINHA AQUI ---
-# 6. Compilar o TypeScript para gerar as pastas /dist
 RUN npm run build
-# --------------------------------
 
-# 7. Configurar o script de entrada
+# 5. Permissões e Execução
+# Garantimos que o script de entrada use o formato de linha Unix
 RUN chmod +x ./entrypoint.sh
 
-# 8. Expor a porta da API
 EXPOSE 3333
 
-# 9. Comando que orquestra o boot do container
+# O entrypoint cuidará do 'prisma db push' e de subir os 3 processos
 CMD ["./entrypoint.sh"]
