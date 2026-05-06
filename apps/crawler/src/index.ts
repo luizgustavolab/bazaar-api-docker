@@ -1,10 +1,10 @@
 import { Queue, ConnectionOptions } from "bullmq";
 import cron from "node-cron";
+import app from "../../api/src/app";
 import { fetchAllActiveAuctions, AuctionData } from "./services/bazaarScraper";
 import { prisma } from "../../api/src/lib/prisma";
 import { redisConnection } from "../../api/src/lib/redis";
 
-// Resolve o erro de incompatibilidade de tipos do ioredis de forma estrita
 const bullmqConnection = redisConnection as unknown as ConnectionOptions;
 
 const bazaarQueue = new Queue("bazaar-queue", {
@@ -18,7 +18,7 @@ async function startCrawler() {
       timeZone: "America/Sao_Paulo",
     });
 
-    console.log(`[CRAWLER] [${now}] Iniciando sincronização via Turso...`);
+    console.log(`[CRAWLER] [${now}] Iniciando sincronização...`);
 
     await prisma.$queryRaw`SELECT 1`;
 
@@ -39,33 +39,20 @@ async function startCrawler() {
             items: item.items,
           },
           {
-            removeOnComplete: {
-              count: 20,
-              age: 3600,
-            },
-            removeOnFail: {
-              count: 50,
-              age: 24 * 3600,
-            },
+            removeOnComplete: { count: 20, age: 3600 },
+            removeOnFail: { count: 50, age: 24 * 3600 },
             attempts: 3,
-            backoff: {
-              type: "exponential",
-              delay: 2000,
-            },
+            backoff: { type: "exponential", delay: 2000 },
           },
         );
       }
       totalSent += items.length;
-      console.log(
-        `[CRAWLER] Batch de ${items.length} leilões enfileirados. Total acumulado: ${totalSent}`,
-      );
     });
 
-    console.log(
-      `[CRAWLER] Sincronização finalizada com sucesso. Total: ${totalSent} leilões.`,
-    );
-  } catch (error) {
-    console.error("[CRAWLER] Erro crítico durante a execução:", error);
+    console.log(`[CRAWLER] Sincronização finalizada. Total: ${totalSent} leilões.`);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : "Erro crítico";
+    console.error("[CRAWLER] Erro:", errorMessage);
   }
 }
 
@@ -73,6 +60,17 @@ cron.schedule("0 0 * * *", async () => {
   await startCrawler();
 });
 
-console.log("[CRAWLER] Serviço de agendamento online (Cron: 00:00).");
+const start = async () => {
+  try {
+    const port = Number(process.env.PORT) || 3333;
+    await app.listen({ port, host: "0.0.0.0" });
+    console.log(`[CRAWLER-SERVICE] Health check online na porta ${port}`);
+    await startCrawler();
+  } catch (err: unknown) {
+    const errorMessage = err instanceof Error ? err.message : "Falha ao iniciar servidor";
+    console.error("[CRAWLER-SERVICE]", errorMessage);
+    process.exit(1);
+  }
+};
 
-startCrawler();
+start();
