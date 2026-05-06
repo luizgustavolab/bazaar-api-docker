@@ -2,13 +2,23 @@ import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
 const getPrismaUrl = () => {
-  const url =
+  let url =
     process.env.TURSO_DATABASE_URL ||
     process.env.DATABASE_URL ||
     "file:./prisma/dev.db";
 
-  if (url.startsWith("libsql://")) {
-    return url.replace("libsql://", "https://");
+  const token = process.env.TURSO_AUTH_TOKEN;
+
+  // Se for uma URL do Turso e tivermos um token separado
+  if (url.startsWith("libsql://") || url.includes("turso.io")) {
+    // 1. Garante que o protocolo seja https:// para a CLI (evita erros de engine)
+    url = url.replace("libsql://", "https://");
+
+    // 2. Se o token não estiver na URL, anexa ele
+    if (token && !url.includes("authToken=")) {
+      const separator = url.includes("?") ? "&" : "?";
+      url = `${url}${separator}authToken=${token}`;
+    }
   }
 
   return url;
