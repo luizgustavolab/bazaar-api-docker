@@ -10,12 +10,15 @@
   "scripts": {
     "generate": "npx prisma generate",
     "db:push": "npx prisma db push --schema=./prisma/schema.prisma",
-    "clean": "rm -rf dist apps/api/dist apps/crawler/dist apps/worker/dist",
+    "clean": "rimraf dist apps/api/dist apps/crawler/dist apps/worker/dist",
     "prebuild": "npm run clean",
     "build": "npx prisma generate && tsc -p apps/api/tsconfig.json --skipLibCheck && tsc -p apps/worker/tsconfig.json --skipLibCheck && tsc -p apps/crawler/tsconfig.json --skipLibCheck",
+    
+    "start": "node apps/api/dist/server.js",
     "start:api": "node apps/api/dist/server.js",
     "start:worker": "node apps/worker/dist/index.js",
     "start:crawler": "node apps/crawler/dist/index.js",
+
     "seed": "tsx prisma/seed.ts",
     "dev": "npm run generate && concurrently -p \"name\" -n \"API,WORKER,CRAWLER\" -c \"cyan,green,magenta\" \"npm:dev:api\" \"npm:dev:worker\" \"npm:dev:crawler\"",
     "dev:api": "tsx watch apps/api/src/server.ts",
@@ -38,8 +41,7 @@
     "fastify": "^4.28.0",
     "ioredis": "^5.10.1",
     "node-cron": "^3.0.3",
-    "prisma": "^7.8.0",
-    "sqlite3": "^5.1.7"
+    "prisma": "^7.8.0"
   },
   "devDependencies": {
     "@types/node": "^20.19.39",

@@ -2,16 +2,17 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "composite": false,
-    "skipLibCheck": true,
-    "noImplicitAny": false,
-    "strict": false,
-    "rootDir": "src",
+    "rootDir": "../",
     "outDir": "dist",
     "baseUrl": ".",
-    "paths": {
-      "@api/*": ["../api/src/*"]
-    }
+    "strict": false,
+    "skipLibCheck": true,
+    "noImplicitAny": false
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*",
+    "../api/src/lib/**/*",
+    "../api/src/config/**/*"
+  ],
   "exclude": ["node_modules", "dist"]
 }

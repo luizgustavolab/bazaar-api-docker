@@ -1,7 +1,5 @@
-
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -16,13 +14,11 @@ model Character {
   world     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
-  // Armazenados como JSON String (JSON.stringify / JSON.parse)
+
   items     String?
   outfitUrl String?
   skills    String?
-  
-  // Relação 1:1 com Auction
+
   auction   Auction?
 }
 
@@ -31,7 +27,7 @@ model Auction {
   characterId Int       @unique
   price       Int
   startedAt   DateTime  @default(now())
-  endsAt      String    // Mantido como String conforme seu crawler/worker
-  
-  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  endsAt      String
+
+  character Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
 }
