@@ -15,10 +15,13 @@ echo "🔄 Prisma Generate..."
 npx prisma generate
 
 echo "🚀 Starting Worker..."
-node apps/worker/dist/index.js &
+# Ajustado para o caminho real gerado pelo build do TS
+node apps/worker/dist/worker/src/index.js &
 
 echo "🚀 Starting Crawler..."
-node apps/crawler/dist/index.js &
+# Ajustado para o caminho real gerado pelo build do TS
+node apps/crawler/dist/crawler/src/index.js &
 
 echo "🚀 Starting API..."
+# O path da API permanece o mesmo pois não teve nesting profundo
 exec node apps/api/dist/server.js
