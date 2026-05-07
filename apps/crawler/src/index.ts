@@ -1,7 +1,6 @@
 import { Queue, type ConnectionOptions } from "bullmq";
 import cron from "node-cron";
 
-// Importe diretamente o que você precisa, sem trazer o app (servidor) da API
 import {
   fetchAllActiveAuctions,
   type AuctionData,
@@ -10,66 +9,68 @@ import { prisma } from "./lib/prisma.js";
 import { redisConnection } from "./lib/redis.js";
 
 const bullmqConnection = redisConnection as unknown as ConnectionOptions;
-const bazaarQueue = new Queue("bazaar-queue", { connection: bullmqConnection });
+
+// Definimos a fila
+const bazaarQueue = new Queue("bazaar-queue", { 
+  connection: bullmqConnection,
+  defaultJobOptions: {
+    removeOnComplete: true, // Limpa o Redis automaticamente após o sucesso
+    removeOnFail: { count: 10 }, // Mantém histórico apenas das últimas 10 falhas
+    attempts: 3,
+    backoff: { type: "exponential", delay: 5000 },
+  }
+});
 
 async function runCrawlerCycle(): Promise<void> {
   try {
     const now = new Date().toLocaleString("pt-BR", {
       timeZone: "America/Sao_Paulo",
     });
-    console.log(`[CRAWLER] [${now}] Iniciando sincronização...`);
+    console.log(`[CRAWLER] [${now}] Iniciando sincronização em lote...`);
 
+  
     await prisma.$queryRaw`SELECT 1`;
 
+    // Executa o scraper enviando os lotes para a fila do BullMQ
     await fetchAllActiveAuctions(async (items: AuctionData[]) => {
-      for (const item of items) {
+      if (items.length > 0) {
         await bazaarQueue.add(
-          "process-auction",
-          {
-            name: item.name,
-            level: item.level,
-            vocation: item.vocation,
-            world: item.world,
-            outfitUrl: item.outfitUrl,
-            skills: item.skills,
-            items: item.items,
-            price: item.currentBid,
-            auctionId: item.auctionId,
-            endsAt: item.endDate,
-          },
-          {
-            removeOnComplete: true,
-            removeOnFail: { count: 10 },
-            attempts: 3,
-            backoff: { type: "exponential", delay: 5000 },
-          },
+          "process-batch", 
+          { characters: items } 
         );
       }
     });
-    console.log(`[CRAWLER] Ciclo finalizado. Itens enviados para a fila.`);
+
+    console.log(`[CRAWLER] Ciclo finalizado. Lotes de páginas enviados para a fila.`);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Unknown Error";
-    console.error("[CRAWLER] Erro crítico:", msg);
+    console.error("[CRAWLER] Erro crítico no ciclo:", msg);
   }
 }
 
-// Agendamento: A cada 2 minutos (para teste inicial)
-cron.schedule("*/2 * * * *", () => {
+
+cron.schedule("0 0 * * *", () => {
+  const now = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+  console.log(`[CRAWLER] [${now}] Disparando execução agendada diária...`);
   void runCrawlerCycle();
+}, {
+  scheduled: true,
+  timezone: "America/Sao_Paulo"
 });
 
 const start = async (): Promise<void> => {
   try {
-    console.log(`[CRAWLER-SERVICE] Rodando em background.`);
+    const bootTime = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+    console.log(`[CRAWLER-SERVICE] [${bootTime}] Iniciado. Aguardando agendamento (00:00).`);
 
-    // Executa uma vez no boot para popular o banco IMEDIATAMENTE (Sugerido para agora)
-    console.log("[CRAWLER] Executando carga inicial...");
-    await runCrawlerCycle();
+  
+    setInterval(() => {
+      const now = new Date().toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" });
+      console.log(`[CRAWLER-SERVICE] Heartbeat: ${now} - Serviço ativo.`);
+    }, 1000 * 60 * 60); 
 
-    // Mantém o processo vivo
-    setInterval(() => {}, 1000 * 60 * 60);
   } catch (err: unknown) {
-    console.error("[CRAWLER-SERVICE] Falha ao iniciar:", err);
+    console.error("[CRAWLER-SERVICE] Falha fatal ao iniciar:", err);
     process.exit(1);
   }
 };
