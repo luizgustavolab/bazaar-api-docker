@@ -1,0 +1,32 @@
+name: Daily Bazaar Crawl
+
+on:
+  schedule:
+    # 03:00 UTC = 00:00 America/Sao_Paulo (Brasil não observa horário de verão desde 2019)
+    - cron: "0 3 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Run crawler
+        run: npx tsx apps/crawler/src/ci.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}

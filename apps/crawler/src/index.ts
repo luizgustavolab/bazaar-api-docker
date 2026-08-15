@@ -7,6 +7,7 @@ import {
 import { prisma } from "./lib/prisma.js";
 import { redisConnection } from "./lib/redis.js";
 import { startBazaarWorker, stopBazaarWorker } from "../../worker/src/index.js";
+import { cleanupExpiredAuctions } from "../../worker/src/lib/cleanup.js";
 
 const bullmqConnection = redisConnection as unknown as ConnectionOptions;
 
@@ -48,11 +49,15 @@ async function runCrawlerCycle(): Promise<void> {
     }
 
     console.log(`[CRAWLER] Sincronização concluída com sucesso.`);
+
+    // 4. Remove leilões expirados (personagens que já saíram do bazar)
+    const removed = await cleanupExpiredAuctions();
+    console.log(`[CRAWLER] Limpeza: ${removed} leilões expirados removidos.`);
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Unknown Error";
     console.error("[CRAWLER] Erro crítico no ciclo:", msg);
   } finally {
-    // 4. DESLIGA O WORKER: Para de falar com o Redis imediatamente
+    // 5. DESLIGA O WORKER: Para de falar com o Redis imediatamente
     await stopBazaarWorker();
   }
 }

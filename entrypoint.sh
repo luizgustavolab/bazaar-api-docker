@@ -14,14 +14,9 @@ fi
 echo "🔄 Prisma Generate..."
 npx prisma generate
 
-echo "🚀 Starting Worker..."
-# Ajustado para o caminho real gerado pelo build do TS
-node apps/worker/dist/worker/src/index.js &
-
-echo "🚀 Starting Crawler..."
-# Ajustado para o caminho real gerado pelo build do TS
-node apps/crawler/dist/crawler/src/index.js &
-
+# Worker e Crawler não rodam mais no Render: o Cloudflare desafia a rede do
+# Render e bloqueia o scraping. O crawl diário agora roda via GitHub Actions
+# (.github/workflows/crawl.yml), gravando direto no Turso. Este container só
+# serve a API para o frontend.
 echo "🚀 Starting API..."
-# O path da API permanece o mesmo pois não teve nesting profundo
 exec node apps/api/dist/server.js
