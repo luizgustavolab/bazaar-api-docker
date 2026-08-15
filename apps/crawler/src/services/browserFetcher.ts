@@ -39,7 +39,10 @@ export async function fetchBazaarPageViaBrowser(
   const page = await context.newPage();
 
   try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 45000 });
+    const response = await page.goto(url, {
+      waitUntil: "domcontentloaded",
+      timeout: 45000,
+    });
 
     // Aguarda o desafio do Cloudflare sumir (título deixa de ser "Just a moment...")
     await page
@@ -53,13 +56,24 @@ export async function fetchBazaarPageViaBrowser(
       });
 
     // Espera o conteúdo real do bazar aparecer
-    await page
+    const foundAuctions = await page
       .waitForSelector(".Auction", { timeout: 15000 })
-      .catch(() => {
-        console.warn(
-          `[BROWSER] Seletor .Auction não apareceu na página ${pageNum}.`,
-        );
-      });
+      .then(() => true)
+      .catch(() => false);
+
+    if (!foundAuctions) {
+      const title = await page.title().catch(() => "?");
+      const bodySnippet = await page
+        .evaluate(() => document.body?.innerText?.slice(0, 800) ?? "")
+        .catch(() => "");
+      console.warn(
+        `[BROWSER] Seletor .Auction não apareceu na página ${pageNum}.\n` +
+          `  status HTTP: ${response?.status()}\n` +
+          `  URL final: ${page.url()}\n` +
+          `  título: "${title}"\n` +
+          `  início do body:\n${bodySnippet}`,
+      );
+    }
 
     const html = await page.content();
 
