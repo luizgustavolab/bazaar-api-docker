@@ -1,4 +1,9 @@
 import { fetchAllActiveAuctions } from "./services/bazaarScraper.js";
+import {
+  initBrowser,
+  closeBrowser,
+  fetchBazaarPageViaBrowser,
+} from "./services/browserFetcher.js";
 import { upsertCharacterBatch } from "../../worker/src/lib/batchUpsert.js";
 import { cleanupExpiredAuctions } from "../../worker/src/lib/cleanup.js";
 
@@ -9,14 +14,21 @@ async function main(): Promise<void> {
   let totalPages = 0;
   let totalItems = 0;
 
-  await fetchAllActiveAuctions(async (items) => {
-    totalPages++;
-    totalItems += items.length;
-    await upsertCharacterBatch(items);
-    console.log(
-      `[CI-CRAWLER] Página ${totalPages} processada (${items.length} itens, total ${totalItems}).`,
-    );
-  });
+  console.log("[CI-CRAWLER] Iniciando browser (resolve challenge do Cloudflare)...");
+  await initBrowser();
+
+  try {
+    await fetchAllActiveAuctions(async (items) => {
+      totalPages++;
+      totalItems += items.length;
+      await upsertCharacterBatch(items);
+      console.log(
+        `[CI-CRAWLER] Página ${totalPages} processada (${items.length} itens, total ${totalItems}).`,
+      );
+    }, fetchBazaarPageViaBrowser);
+  } finally {
+    await closeBrowser();
+  }
 
   const removed = await cleanupExpiredAuctions();
   console.log(`[CI-CRAWLER] Limpeza: ${removed} leilões expirados removidos.`);

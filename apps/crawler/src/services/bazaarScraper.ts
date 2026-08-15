@@ -114,6 +114,7 @@ export function parseBazaarHTML(html: string): AuctionData[] {
 
 export async function fetchAllActiveAuctions(
   onPageProcessed: (data: AuctionData[]) => Promise<void>,
+  fetchPage: (page: number) => Promise<string> = fetchBazaarPage,
 ): Promise<void> {
   let currentPage = 1;
   let totalPages = 1;
@@ -121,7 +122,7 @@ export async function fetchAllActiveAuctions(
   try {
     do {
       console.log(`[SCRAPER] Lendo página ${currentPage}...`);
-      const html = await fetchBazaarPage(currentPage);
+      const html = await fetchPage(currentPage);
 
       // Na primeira página, identificamos o total de páginas existentes
       if (currentPage === 1) {

@@ -5,6 +5,7 @@
     "rootDir": "../",
     "outDir": "dist",
     "baseUrl": ".",
+    "lib": ["ES2022", "DOM"],
     "strict": false,
     "skipLibCheck": true,
     "noImplicitAny": false,
